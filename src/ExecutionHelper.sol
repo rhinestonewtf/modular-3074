@@ -38,9 +38,9 @@ contract ExecutionHelper {
             ModeSelector _modeSelector,
             ModePayload _modePayload
         ) = mode.decode();
-        if (ModeSelector.unwrap(_modeSelector) != ModeSelector.unwrap(MODE_EIP3074)) {
-            revert InvalidMode();
-        }
+        // if (ModeSelector.unwrap(_modeSelector) != ModeSelector.unwrap(MODE_EIP3074)) {
+        //     revert InvalidMode();
+        // }
 
         if (_calltype == CALLTYPE_SINGLE) {
             (address to, uint256 value, bytes calldata callData) = executionCalldata.decodeSingle();

@@ -1,10 +1,15 @@
 enum Operation {
     USE,
-    ENABLE
+    ENABLE,
+    MOCK
 }
 
 library SigDecode {
-    function packSelection(Operation operation, address validator, uint256 nonce)
+    function packSelection(
+        Operation operation,
+        address validator,
+        uint256 nonce
+    )
         internal
         pure
         returns (bytes memory)
@@ -45,7 +50,10 @@ library SigDecode {
         }
     }
 
-    function unpackUse(bytes calldata data) internal returns (bytes calldata validatorSig, bytes calldata authSig) {
+    function unpackUse(bytes calldata data)
+        internal
+        returns (bytes calldata validatorSig, bytes calldata authSig)
+    {
         assembly {
             let offset := data.offset
             let baseOffset := offset

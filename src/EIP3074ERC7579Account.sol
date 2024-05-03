@@ -11,6 +11,7 @@ import "./utils/utils.sol";
 import "./DataTypes.sol";
 import { MultiSendAuthCallOnly } from "./utils/MultiSendAuthCallOnly.sol";
 import "./ExecutionHelper.sol";
+import "forge-std/console2.sol";
 
 interface IStatelessValidator {
     function validateSignatureWithData(
@@ -81,6 +82,8 @@ contract EIP3074ERC7579Account is Auth, ExecutionHelper {
         bytes calldata validatorSig;
         bytes calldata authSig;
 
+        _payPrefund(missingAccountFunds);
+
         if (operation == Operation.USE) {
             (validatorSig, authSig) = SigDecode.unpackUse(userOp.signature[53:]);
             validatorData = $validatorData[validator][eoa].data;
@@ -90,6 +93,8 @@ contract EIP3074ERC7579Account is Auth, ExecutionHelper {
             $validators.init({ account: eoa });
             $validators.push({ account: eoa, newEntry: validator });
             $validatorData[validator][eoa] = ValidatorData({ data: validatorData });
+        } else if (operation == Operation.MOCK) {
+            return 0;
         } else {
             revert();
         }
@@ -134,15 +139,45 @@ contract EIP3074ERC7579Account is Auth, ExecutionHelper {
     function executeUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash) external {
         require(msg.sender == address(ep), "!ep");
         address eoa;
-        address validator = address(bytes20(userOp.signature[1:21]));
         uint256 nonce = userOp.nonce;
         assembly {
             eoa := shr(96, nonce)
         }
+        Operation operation;
+        address validator;
+        (operation, validator, nonce) = userOp.signature.unpackSelection();
+        bytes memory validatorData;
+        bytes calldata validatorSig;
+        bytes calldata authSig;
 
-        (, bytes calldata validatorSig, bytes calldata authSig) =
-            SigDecode.unpackEnable(userOp.signature[53:]);
-        bytes memory validatorData = $validatorData[validator][eoa].data;
+        if (operation == Operation.USE) {
+            (validatorSig, authSig) = SigDecode.unpackUse(userOp.signature[53:]);
+            validatorData = $validatorData[validator][eoa].data;
+        } else if (operation == Operation.ENABLE) {
+            (validatorData, validatorSig, authSig) = SigDecode.unpackEnable(userOp.signature[53:]);
+            // enable validator module for account
+            $validators.init({ account: eoa });
+            $validators.push({ account: eoa, newEntry: validator });
+            $validatorData[validator][eoa] = ValidatorData({ data: validatorData });
+        }
+        if (operation == Operation.MOCK) {
+            (validatorSig, authSig) = SigDecode.unpackUse(userOp.signature[53:]);
+            validatorData = $validatorData[validator][eoa].data;
+        } else {
+            revert();
+        }
+
+        // require(msg.sender == address(ep), "!ep");
+        // address eoa;
+        // address validator = address(bytes20(userOp.signature[1:21]));
+        // uint256 nonce = userOp.nonce;
+        // assembly {
+        //     eoa := shr(96, nonce)
+        // }
+
+        // (, bytes calldata validatorSig, bytes calldata authSig) =
+        //     SigDecode.unpackEnable(userOp.signature[53:]);
+        // bytes memory validatorData = $validatorData[validator][eoa].data;
 
         // do auth
         doAuth(eoa, validator, validatorData, authSig);
@@ -171,6 +206,7 @@ contract EIP3074ERC7579Account is Auth, ExecutionHelper {
     )
         internal
     {
+        console2.logBytes(validatorData);
         bytes32 commit = keccak256(abi.encodePacked(validator, validatorData));
         Signature memory sig = Signature({
             signer: eoa,
@@ -207,6 +243,15 @@ contract EIP3074ERC7579Account is Auth, ExecutionHelper {
 
     function doExecute(bytes calldata callData) internal {
         MultiSendAuthCallOnly.multiSend(callData);
+    }
+
+    function _payPrefund(uint256 missingAccountFunds) internal virtual {
+        if (missingAccountFunds != 0) {
+            (bool success,) =
+                payable(msg.sender).call{ value: missingAccountFunds, gas: type(uint256).max }("");
+            (success);
+            //ignore failure (its EntryPoint's job to verify, not account.)
+        }
     }
 
     function parseSig(bytes calldata sig)
