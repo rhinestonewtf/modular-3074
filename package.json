@@ -49,7 +49,7 @@
   },
   "repository": "github.com/rhinestonewtf/module-template",
   "scripts": {
-    "build": "forge build",
+    "build": "make cmd='forge build'",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
     "build:smt": "FOUNDRY_PROFILE=smt forge build",
     "clean": "rm -rf artifacts broadcast cache docs out out-optimized out-svg",
@@ -61,7 +61,7 @@
     "prepack": "pnpm install && bash ./shell/prepare-artifacts.sh",
     "prettier:check": "prettier --check \"**/*.{json,md,svg,yml}\"",
     "prettier:write": "prettier --write \"**/*.{json,md,svg,yml}\"",
-    "test": "forge test",
+    "test": "make cmd='forge test'",
     "test:lite": "FOUNDRY_PROFILE=lite forge test",
     "test:optimized": "pnpm run build:optimized && FOUNDRY_PROFILE=test-optimized forge test"
   }
