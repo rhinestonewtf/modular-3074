@@ -10,6 +10,6 @@ foundry:
     -v $$(pwd):/app/foundry \
     -u $$(id -u):$$(id -g) \
 		-p 8545:8545 \
-    local/foundry-alphanet:latest \
+    ghcr.io/paradigmxyz/foundry-alphanet:latest \
     --foundry-directory /app/foundry \
     --foundry-command "$(cmd)"
